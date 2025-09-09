@@ -1,0 +1,123 @@
+/* ===========================
+   Base + CTA (déjà utilisées ailleurs)
+   =========================== */
+.cta {
+  max-width: 480px;
+  margin: 12px auto;
+  text-align: center;
+}
+a.btn {
+  display: inline-block;
+  padding: 10px 16px;
+  border: 2px solid #111;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #111;
+  background: #fff;
+  font-weight: 600;
+}
+a.btn:hover { transform: translateY(-1px); }
+
+/* ===========================
+   Fond de page (image)
+   Chemin depuis assets/css → assets/images
+   =========================== */
+body {
+  background-image: url("../images/farine-potiron.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* ===========================
+   Messages
+   =========================== */
+.alert {
+  max-width: 480px;
+  margin: 16px auto;
+  padding: 12px 14px;
+  border-radius: 8px;
+}
+.alert--error {
+  background: #ffecec;
+  border: 1px solid #f5c2c7;
+  color: #842029;
+}
+
+/* ===========================
+   Formulaire d'inscription
+   (ton <form> a class="form")
+   =========================== */
+.form {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 24px;
+  background: #fff;
+  border: 2px solid #111;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 #111;
+}
+
+/* Titres / paragraphes dans le form si tu en ajoutes */
+.form h2 {
+  margin-top: 0;
+  text-align: center;
+  font-size: 1.6rem;
+}
+.form p {
+  font-size: 0.9rem;
+  margin: 10px 0;
+}
+
+/* Labels + champs */
+.form label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 6px;
+}
+.form input[type="text"],
+.form input[type="email"],
+.form input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #111;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+/* Checkbox (alignée avec ton HTML inline) */
+.form input[type="checkbox"] { margin-right: 8px; }
+
+/* Bouton */
+.form button {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #111;
+  border-radius: 10px;
+  background: #ff5a00;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.3s;
+}
+.form button:hover {
+  background: #e14f00;
+  transform: translateY(-2px);
+}
+
+/* ===========================
+   Honeypot (champ caché mais présent au DOM)
+   =========================== */
+.hp-wrap {
+  position: absolute !important;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+/* Variante moins accessible :
+   .hp-wrap { display: none; } */
