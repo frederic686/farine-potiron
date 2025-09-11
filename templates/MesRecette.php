@@ -31,31 +31,13 @@
     a { color:#0b66c3; text-decoration:none; }
     a:hover { text-decoration:underline; }
 
-    .btn-modif {
-      display: inline-block;
-      padding: 6px 12px;
-      background: #4CAF50;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    .btn-modif:hover { background: #45a049; }
+    .btn-modif { display:inline-block; padding:6px 12px; background:#4CAF50; color:#fff; text-decoration:none; border-radius:6px; font-size:14px; }
+    .btn-modif:hover { background:#45a049; }
 
-    .btn-secondary{
-      background:#0b66c3;
-    }
+    .btn-secondary{ background:#0b66c3; }
     .btn-secondary:hover{ background:#094a8f; }
 
-    .btn-remove{
-      background:#C0392B;
-      color:#fff;
-      border:none;
-      border-radius:6px;
-      padding:8px 10px;
-      cursor:pointer;
-      white-space:nowrap;
-    }
+    .btn-remove{ background:#C0392B; color:#fff; border:none; border-radius:6px; padding:8px 10px; cursor:pointer; white-space:nowrap; }
     .btn-remove:hover{ background:#962d22; }
 
     /* Accordéon détails */
@@ -65,18 +47,15 @@
       padding: 10px 0 0; color: #333; line-height: 1.5;
       border-top: 1px dashed #ddd; margin-top: 8px; white-space: pre-wrap;
     }
-    .btn-detail {
-      display: inline-block; padding: 6px 12px; background: #0b66c3; color: #fff;
-      text-decoration: none; border-radius: 6px; font-size: 14px; cursor: pointer;
-    }
-    .btn-detail:hover { background: #094a8f; }
+    .btn-detail { display:inline-block; padding:6px 12px; background:#0b66c3; color:#fff; text-decoration:none; border-radius:6px; font-size:14px; cursor:pointer; }
+    .btn-detail:hover { background:#094a8f; }
   </style>
 </head>
 <body>
   <h1>Mes recettes</h1>
-    <p style="margin-top:20px;">
-      <a href="profil_retour.php" class="btn-modif">⬅ Retour au profil</a>
-    </p>
+  <p style="margin-top:20px;">
+    <a href="profil_retour.php" class="btn-modif">⬅ Retour au profil</a>
+  </p>
 
   <?php if (!empty($success)): ?>
     <div class="success">
@@ -115,6 +94,10 @@
 
             <div style="margin-top:8px; display:flex; gap:10px;">
               <a href="MajRecette.php?id=<?= (int)$r['id'] ?>" class="btn-modif">✎ Modifier</a>
+
+              <!-- 🔧 bouton suppression AJAX (liste) -->
+              <button type="button" class="btn-remove js-del" data-id="<?= (int)$r['id'] ?>">🗑 Supprimer</button>
+
               <button type="button" class="btn-detail btn-secondary" data-target="details-<?= (int)$r['id'] ?>">
                 👁 Voir détail
               </button>
@@ -123,8 +106,6 @@
             <!-- Bloc détails caché -->
             <div id="details-<?= (int)$r['id'] ?>" class="details">
               <div class="content">
-
-                <!-- Description -->
                 <h3>Description</h3>
                 <?php if (!empty($r['description'])): ?>
                   <p><?= nl2br(htmlspecialchars($r['description'])) ?></p>
@@ -132,14 +113,12 @@
                   <em>Aucune description enregistrée.</em>
                 <?php endif; ?>
 
-                <!-- Ingrédients -->
                 <h3>Ingrédients</h3>
                 <?php if (!empty($r['ingredients'])): ?>
                   <ul>
                     <?php foreach ($r['ingredients'] as $ing): ?>
                       <li>
                         <?php
-                          // Libellé : farine depuis catalogue si ref_farine, sinon nom libre
                           $lib = '';
                           if (!empty($ing['ref_farine']) && isset($catalogueFarines[$ing['ref_farine']])) {
                             $lib = $catalogueFarines[$ing['ref_farine']];
@@ -166,7 +145,7 @@
     </div>
     <!-- /Colonne gauche -->
 
-    <!-- Colonne droite : formulaire (création / édition / suppression via case) -->
+    <!-- Colonne droite : formulaire (création / édition AJAX) -->
     <div class="form">
       <h2><?= !empty($recette['id']) ? 'Modifier la recette' : 'Créer une recette' ?></h2>
 
@@ -205,12 +184,10 @@
             Choisissez une farine F&P <em>ou</em> saisissez un autre ingrédient. (Au moins une farine est requise)
           </p>
 
-          <!-- Conteneur des lignes -->
           <div id="ingredients-container">
             <?php if (!empty($ingredients)): ?>
               <?php foreach ($ingredients as $ing): ?>
                 <div class="row ingredient-line">
-                  <!-- Farine F&P depuis l’API -->
                   <select name="ing_farine[]">
                     <option value="">— Choisir une farine F&P —</option>
                     <?php foreach ($catalogueFarines as $ref => $lib): ?>
@@ -221,13 +198,11 @@
                     <?php endforeach; ?>
                   </select>
 
-                  <!-- Autre ingrédient libre -->
                   <input type="text" name="ing_nom[]" placeholder="Autre ingrédient"
-                        value="<?= htmlspecialchars($ing['nom'] ?? '') ?>">
+                         value="<?= htmlspecialchars($ing['nom'] ?? '') ?>">
 
-                  <!-- Quantité -->
                   <input type="text" name="ing_qte[]" placeholder="Quantité"
-                        value="<?= htmlspecialchars($ing['quantite'] ?? '') ?>">
+                         value="<?= htmlspecialchars($ing['quantite'] ?? '') ?>">
 
                   <button type="button" class="btn-remove" title="Supprimer cette ligne">❌</button>
                 </div>
@@ -235,12 +210,10 @@
             <?php endif; ?>
           </div>
 
-          <!-- Bouton pour ajouter dynamiquement -->
           <div class="actions" style="margin-top:8px">
             <button type="button" id="btn-add" class="btn-secondary">➕ Ajouter un ingrédient</button>
           </div>
 
-          <!-- Template (cloné en JS) -->
           <template id="tpl-ingredient">
             <div class="row ingredient-line">
               <select name="ing_farine[]">
@@ -258,11 +231,9 @@
 
         <div class="actions" style="margin-top:10px;">
           <?php if (!empty($recette['id'])): ?>
-            <label style="display:flex;align-items:center;gap:6px;">
-              <input type="checkbox" name="supprimer"> Supprimer cette recette
-            </label>
+            <!-- 🔧 bouton suppression AJAX (formulaire) -->
+            <button type="button" id="btn-delete" class="btn-remove">Supprimer</button>
           <?php endif; ?>
-
           <button type="submit">Enregistrer</button>
         </div>
       </form>
@@ -271,9 +242,9 @@
 
   </div>
 
-  <!-- Accordéon JS + Ingrédients dynamiques + Validation -->
+  <!-- Accordéon + Ingrédients dynamiques + AJAX -->
   <script>
-    // -------- Accordéon (liste à gauche)
+    // Accordéon (liste à gauche)
     document.addEventListener('click', function (e) {
       const btn = e.target.closest('.btn-detail');
       if (!btn) return;
@@ -300,74 +271,154 @@
       }
     });
 
-    // -------- Ingrédients dynamiques
+    // Ingrédients dynamiques
     (function(){
       const container = document.getElementById('ingredients-container');
       const tpl = document.getElementById('tpl-ingredient');
       const btnAdd = document.getElementById('btn-add');
 
-      // Ajoute une ligne
-      function addLine(focus = true){
-        const node = document.importNode(tpl.content, true);
-        const line = node.querySelector('.ingredient-line');
-
-        // Bouton supprimer
-        line.querySelector('.btn-remove').addEventListener('click', () => {
-          // On garde au moins une ligne visible
+      function wireRemove(btn, line){
+        btn.addEventListener('click', () => {
+          // Garde au moins une ligne
           if (container.querySelectorAll('.ingredient-line').length > 1) {
             line.remove();
           } else {
-            // Si c'est la dernière ligne, on la "réinitialise"
             line.querySelector('select[name="ing_farine[]"]').value = "";
             line.querySelector('input[name="ing_nom[]"]').value = "";
             line.querySelector('input[name="ing_qte[]"]').value = "";
           }
         });
-
-        container.appendChild(line);
-        if (focus) {
-          const select = line.querySelector('select[name="ing_farine[]"]');
-          if (select) select.focus();
-        }
       }
 
-      // Si aucune ligne n’a été rendue côté PHP (nouvelle recette), on en crée une
+      function addLine(focus = true){
+        const node = document.importNode(tpl.content, true);
+        const line = node.querySelector('.ingredient-line');
+        wireRemove(line.querySelector('.btn-remove'), line);
+        container.appendChild(line);
+        if (focus) line.querySelector('select[name="ing_farine[]"]').focus();
+      }
+
       if (!container.querySelector('.ingredient-line')) {
         addLine(false);
       } else {
-        // On attache le remove aux lignes existantes
-        container.querySelectorAll('.ingredient-line .btn-remove').forEach(btn => {
-          btn.addEventListener('click', (ev) => {
-            const line = ev.target.closest('.ingredient-line');
-            if (container.querySelectorAll('.ingredient-line').length > 1) {
-              line.remove();
-            } else {
-              line.querySelector('select[name="ing_farine[]"]').value = "";
-              line.querySelector('input[name="ing_nom[]"]').value = "";
-              line.querySelector('input[name="ing_qte[]"]').value = "";
-            }
-          });
+        container.querySelectorAll('.ingredient-line').forEach(line => {
+          wireRemove(line.querySelector('.btn-remove'), line);
         });
       }
-
       btnAdd.addEventListener('click', () => addLine(true));
+    })();
 
-      // -------- Validation minimale : au moins une farine F&P sélectionnée
-const form = document.getElementById('form-recette');
-form.addEventListener('submit', (e) => {
-  // ⬇️ NE BLOQUE PAS si on supprime
-  const deleting = form.querySelector('input[name="supprimer"]')?.checked;
-  if (deleting) return;
+    // ===== AJAX (save + delete)
+    (function(){
+      const form = document.getElementById('form-recette');
+      const container = document.getElementById('ingredients-container');
 
-  const selects = container.querySelectorAll('select[name="ing_farine[]"]');
-  let hasFlour = false;
-  selects.forEach(s => { if (s.value && s.value.trim() !== '') hasFlour = true; });
-  if (!hasFlour) {
-    e.preventDefault();
-    alert("Veuillez sélectionner au moins une farine F&P dans la liste déroulante.");
-  }
-});
+      function hasAtLeastOneFlour(){
+        const selects = container.querySelectorAll('select[name="ing_farine[]"]');
+        for (const s of selects) { if (s.value && s.value.trim() !== '') return true; }
+        return false;
+      }
 
+      // SAVE (create/update)
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Validation légère (côté serveur aussi)
+        if (!hasAtLeastOneFlour()) {
+          alert("Veuillez sélectionner au moins une farine F&P dans la liste déroulante.");
+          return;
+        }
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
+        try {
+          const fd = new FormData(form);
+          fd.set('action', 'save');
+
+          const res = await fetch('MajRecette.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+          });
+          const json = await res.json();
+
+          if (json.ok) {
+            const flag = (json.msg === 'Créée') ? 'created' : 'updated';
+            location.href = 'MajRecette.php?id=' + json.id + '&success=' + flag;
+          } else {
+            alert('❌ ' + (json.msg || 'Erreur'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('❌ Erreur réseau');
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      // DELETE (depuis le formulaire)
+      document.getElementById('btn-delete')?.addEventListener('click', async () => {
+        const id = parseInt(document.querySelector('input[name="id"]').value || '0', 10);
+        if (!id) { alert('Pas d’ID.'); return; }
+        if (!confirm('Supprimer définitivement cette recette ?')) return;
+
+        const fd = new FormData();
+        fd.set('action', 'delete');
+        fd.set('id', String(id));
+
+        try {
+          const res = await fetch('MajRecette.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+          });
+          const json = await res.json();
+          if (json.ok) {
+            location.href = 'MajRecette.php?success=deleted';
+          } else {
+            alert('❌ ' + (json.msg || 'Suppression impossible'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('❌ Erreur réseau');
+        }
+      });
+
+      // DELETE (depuis la liste)
+      document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.js-del');
+        if (!btn) return;
+
+        const id = parseInt(btn.dataset.id || '0', 10);
+        if (!id) return;
+        if (!confirm('Supprimer définitivement cette recette ?')) return;
+
+        const fd = new FormData();
+        fd.set('action', 'delete');
+        fd.set('id', String(id));
+
+        btn.disabled = true;
+        try {
+          const res = await fetch('MajRecette.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+          });
+          const json = await res.json();
+          if (json.ok) {
+            const item = btn.closest('.item');
+            if (item) item.remove();
+          } else {
+            alert('❌ ' + (json.msg || 'Suppression impossible'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('❌ Erreur réseau');
+        } finally {
+          btn.disabled = false;
+        }
+      });
     })();
   </script>
 </body>

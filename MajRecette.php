@@ -3,7 +3,20 @@ session_start();
 require_once "library/init.php";
 // require_once "models/Recette.php";
 // require_once "models/Ingredient.php";
-// ^^^ décommente si tu n'as pas d'autoload
+
+function json_response(array $payload, int $code=200): void {
+  http_response_code($code);
+  header('Content-Type: application/json; charset=utf-8');
+  echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+  exit;
+}
+
+function is_ajax(): bool {
+  return (
+    (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+    || (isset($_SERVER['HTTP_ACCEPT']) && stripos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+  );
+}
 
 /** Récupère le catalogue des farines F&P via cURL (backend) */
 function fetchCatalogueFarines(): array {
@@ -25,39 +38,137 @@ function fetchCatalogueFarines(): array {
   return is_array($data) ? $data : [];
 }
 
+// Auth
 if (empty($_SESSION['user_id'])) {
+  if (is_ajax()) json_response(['ok'=>false,'msg'=>'Non connecté'], 401);
   header("Location: login.php?error=not_connected");
   exit;
 }
 
-$userId  = (int)$_SESSION['user_id'];
-$message = "";
-$success = $_GET['success'] ?? "";
-
-/** Catalogue farines (ref => libellé) */
+$userId           = (int)$_SESSION['user_id'];
 $catalogueFarines = fetchCatalogueFarines();
 
 /* =========================
-   LISTE (colonne gauche)
+   ROUTES AJAX — SEULE logique d’écriture
    ========================= */
-$recettes = Recette::findByUser($userId);
+if (is_ajax() && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $action = $_POST['action'] ?? '';
 
-/* Pour l’accordéon : on enrichit chaque recette avec ses ingrédients */
+  try {
+    switch ($action) {
+      case 'delete': {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) json_response(['ok'=>false,'msg'=>'ID manquant'], 400);
+
+        if (Recette::deleteOwned($id, $userId)) {
+          json_response(['ok'=>true,'msg'=>'Recette supprimée','id'=>$id]);
+        }
+        json_response(['ok'=>false,'msg'=>'Suppression impossible'], 403);
+      }
+
+      case 'save': {
+        $id          = (int)($_POST['id'] ?? 0);
+        $titre       = trim($_POST['titre'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $duree       = (int)($_POST['duree'] ?? 0);
+        $difficulte  = $_POST['difficulte'] ?? 'facile';
+        $ingFarines  = isset($_POST['ing_farine']) ? (array)$_POST['ing_farine'] : [];
+        $ingNoms     = isset($_POST['ing_nom'])    ? (array)$_POST['ing_nom']    : [];
+        $ingQtes     = isset($_POST['ing_qte'])    ? (array)$_POST['ing_qte']    : [];
+
+        $diffOk = in_array($difficulte, ['très facile','facile','difficile'], true);
+        if ($titre === '' || $description === '' || $duree <= 0 || !$diffOk) {
+          json_response(['ok'=>false,'msg'=>'Champs invalides ou manquants'], 422);
+        }
+
+        // Reconstruire ingrédients + règle métier "au moins une farine F&P"
+        $ings = [];
+        $hasFarine = false;
+        $max = max(count($ingFarines), count($ingNoms), count($ingQtes));
+        for ($i=0; $i<$max; $i++) {
+          $ref = trim($ingFarines[$i] ?? '');
+          $nom = trim($ingNoms[$i] ?? '');
+          $qte = trim($ingQtes[$i] ?? '');
+          if ($ref !== '') {
+            $lib = $catalogueFarines[$ref] ?? $ref;
+            $nom = $lib;
+            $hasFarine = true;
+          }
+          if ($nom === '' && $qte === '') continue;
+          $ings[] = [
+            'nom'        => $nom,
+            'quantite'   => $qte,
+            'ref_farine' => ($ref !== '') ? $ref : null,
+          ];
+        }
+        if (!$hasFarine) {
+          json_response(['ok'=>false,'msg'=>'Merci de sélectionner au moins une farine F&P'], 422);
+        }
+
+        $bdd->beginTransaction();
+
+        if ($id === 0) {
+          // Création
+          $obj = new Recette();
+          $obj->titre          = $titre;
+          $obj->description    = $description;
+          $obj->duree          = $duree;
+          $obj->difficulte     = $difficulte;
+          $obj->id_utilisateur = $userId;
+          $newId = $obj->insert();
+
+          Ingredient::insertMany($newId, $ings);
+          $bdd->commit();
+
+          json_response(['ok'=>true,'msg'=>'Créée','id'=>$newId]);
+        } else {
+          // Mise à jour
+          $obj = new Recette();
+          $obj->id          = $id;
+          $obj->titre       = $titre;
+          $obj->description = $description;
+          $obj->duree       = $duree;
+          $obj->difficulte  = $difficulte;
+
+          if (!$obj->updateOwned($userId)) {
+            throw new Exception('Update refusé (identifiant/propriété)');
+          }
+          Ingredient::deleteByRecette($id);
+          Ingredient::insertMany($id, $ings);
+
+          $bdd->commit();
+          json_response(['ok'=>true,'msg'=>'Mise à jour','id'=>$id]);
+        }
+      }
+
+      default:
+        json_response(['ok'=>false,'msg'=>'Action inconnue'], 400);
+    }
+  } catch (Throwable $e) {
+    if ($bdd->inTransaction()) $bdd->rollBack();
+    json_response(['ok'=>false,'msg'=>'Erreur serveur: '.$e->getMessage()], 500);
+  }
+}
+
+/* =========================
+   RENDU PAGE (GET) — lecture seule
+   ========================= */
+$success  = $_GET['success'] ?? "";
+$message  = "";
+
+// Liste des recettes (colonne gauche)
+$recettes = Recette::findByUser($userId);
 if (!empty($recettes)) {
   foreach ($recettes as &$rec) {
-    $rec['ingredients'] = Ingredient::getByRecette((int)$rec['id']); // attend: nom, quantite, (optionnel) ref_farine
+    $rec['ingredients'] = Ingredient::getByRecette((int)$rec['id']);
   }
   unset($rec);
 }
 
-/* =========================
-   EDITION (colonne droite)
-   ========================= */
+// Chargement de la recette en édition (colonne droite)
 $rid         = (int)($_GET['id'] ?? 0);
-$recette     = ['id'=>0, 'titre'=>'', 'description'=>'', 'duree'=>'', 'difficulte'=>'facile'];
+$recette     = ['id'=>0,'titre'=>'','description'=>'','duree'=>'','difficulte'=>'facile'];
 $ingredients = [];
-
-/* Si édition, charger la recette et ses ingrédients */
 if ($rid > 0) {
   $r = Recette::findByIdAndUser($rid, $userId);
   if ($r) {
@@ -68,127 +179,8 @@ if ($rid > 0) {
   }
 }
 
-/* =========================
-   TRAITEMENT POST (create / update / delete)
-   ========================= */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $postId      = (int)($_POST['id'] ?? 0);
-  $titre       = trim($_POST['titre'] ?? '');
-  $description = trim($_POST['description'] ?? '');
-  $duree       = (int)($_POST['duree'] ?? 0);
-  $difficulte  = $_POST['difficulte'] ?? 'facile';
-
-  // Ingrédients saisis
-  $ingFarines  = $_POST['ing_farine'] ?? [];   // références F&P (ex: FEP-XXXX)
-  $ingNoms     = $_POST['ing_nom'] ?? [];      // nom libre
-  $ingQtes     = $_POST['ing_qte'] ?? [];      // quantités
-  $supprimer   = isset($_POST['supprimer']);
-
-  $diffOk = in_array($difficulte, ['très facile','facile','difficile'], true);
-
-  if ($supprimer && $postId > 0) {
-    if (Recette::deleteOwned($postId, $userId)) {
-      header("Location: MajRecette.php?success=deleted");
-      exit;
-    } else {
-      $message = "❌ Suppression impossible.";
-    }
-  } else {
-    if ($titre === '' || $description === '' || $duree <= 0 || !$diffOk) {
-      $message = "⚠️ Champs invalides ou manquants.";
-    } else {
-      // Reconstruire les ingrédients (et conserver ref_farine si sélectionnée)
-      $ings = [];
-      $hasFarine = false;
-      $max = max(count($ingFarines), count($ingNoms), count($ingQtes));
-
-      for ($i=0; $i<$max; $i++) {
-        $ref = trim($ingFarines[$i] ?? '');
-        $nom = trim($ingNoms[$i] ?? '');
-        $qte = trim($ingQtes[$i] ?? '');
-
-        // si une ref F&P est choisie, on force le nom au libellé du catalogue
-        if ($ref !== '') {
-          $lib = $catalogueFarines[$ref] ?? $ref;
-          $nom = $lib;
-          $hasFarine = true;
-        }
-
-        // ignorer les lignes vides
-        if ($nom === '' && $qte === '') continue;
-
-        $ings[] = [
-          'nom'        => $nom,
-          'quantite'   => $qte,
-          'ref_farine' => ($ref !== '') ? $ref : null,
-        ];
-      }
-
-      // Règle métier : au moins une farine F&P
-      if (!$hasFarine) {
-        $message = "⚠️ Merci de sélectionner au moins une farine F&P dans la liste.";
-      } else {
-        try {
-          $bdd->beginTransaction();
-
-          if ($postId === 0) {
-            // Création
-            $obj = new Recette();
-            $obj->titre          = $titre;
-            $obj->description    = $description;
-            $obj->duree          = $duree;
-            $obj->difficulte     = $difficulte;
-            $obj->id_utilisateur = $userId;
-            $newId = $obj->insert();
-
-            Ingredient::insertMany($newId, $ings); // doit gérer nom, quantite, ref_farine
-            $bdd->commit();
-            header("Location: MajRecette.php?success=created");
-            exit;
-
-          } else {
-            // Mise à jour
-            $obj = new Recette();
-            $obj->id            = $postId;
-            $obj->titre         = $titre;
-            $obj->description   = $description;
-            $obj->duree         = $duree;
-            $obj->difficulte    = $difficulte;
-
-            if (!$obj->updateOwned($userId)) {
-              throw new Exception("Update refusé (identifiant/propriété).");
-            }
-
-            Ingredient::deleteByRecette($postId);
-            Ingredient::insertMany($postId, $ings);
-
-            $bdd->commit();
-            header("Location: MajRecette.php?success=updated");
-            exit;
-          }
-        } catch (Throwable $e) {
-          if ($bdd->inTransaction()) { $bdd->rollBack(); }
-          $message = "❌ Erreur : ".$e->getMessage();
-        }
-      }
-    }
-  }
-
-  // En cas d'erreur : recharger le formulaire avec la saisie
-  $recette = [
-    'id'          => $postId,
-    'titre'       => $titre,
-    'description' => $description,
-    'duree'       => $duree,
-    'difficulte'  => $difficulte
-  ];
-  $ingredients = $ings ?? $ingredients;
-}
-
-/* Pré-remplissage minimal des lignes d’ingrédients côté formulaire */
+// Pré-remplissage si vide (3 lignes)
 if (empty($ingredients)) { $ingredients = [[],[],[]]; }
 
-/* =========================
-   Rendu vue
-   ========================= */
+// Rendu
 require "templates/MesRecette.php";
