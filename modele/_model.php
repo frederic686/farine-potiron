@@ -11,6 +11,7 @@
 // Inclusion du fichier de connexion
 require_once "library/init.php";
 
+
 class Model {
     // Tableau associatif qui contiendra toutes les données de l’objet
     protected $data = [];
@@ -60,15 +61,40 @@ class Model {
     }
 
     /**
+     * Méthode GET générique
+     * Permet de récupérer un enregistrement de la base SQL par ID
+     */
+public function get($id) {
+    global $bdd;
+    
+    if ($id <= 0) {
+        throw new Exception("ID invalide");
+    }
+
+    $sql = "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1";
+    $stmt = $bdd->prepare($sql);
+    $stmt->execute(['id' => $id]);
+
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($result) {
+        $this->data = $result;
+        return $this;
+    }
+
+    return null;
+}
+
+
+
+    /**
      * Méthode UPDATE
      * Met à jour les données de l’objet dans la base SQL
-     * 
      * ⚠️ Nécessite que :
      * - la table soit définie dans la classe enfant ($this->table)
      * - l’objet contienne une clé primaire "id"
      */
     public function update() {
-        // On récupère la connexion PDO déclarée dans init.php
         global $bdd;
 
         // Vérification : il faut un id pour mettre à jour
@@ -95,5 +121,22 @@ class Model {
 
         $stmt = $bdd->prepare($sql);
         return $stmt->execute($params); // retourne true si succès
+    }
+
+    /**
+     * Méthode DELETE générique
+     * Permet de supprimer un enregistrement de la base SQL par ID
+     */
+    public function delete() {
+        global $bdd;
+
+        // Vérifie qu'il y a un 'id' dans l'objet avant de supprimer
+        if (!isset($this->data['id'])) {
+            throw new Exception("Impossible de supprimer sans id !");
+        }
+
+        $sql = "DELETE FROM {$this->table} WHERE id = :id";
+        $stmt = $bdd->prepare($sql);
+        return $stmt->execute(['id' => $this->data['id']]);
     }
 }

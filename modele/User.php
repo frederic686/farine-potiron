@@ -103,4 +103,3 @@ class User extends Model {
             return $map;
         }
     }
-

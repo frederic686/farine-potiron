@@ -353,16 +353,21 @@
       btnAdd.addEventListener('click', () => addLine(true));
 
       // -------- Validation minimale : au moins une farine F&P sélectionnée
-      const form = document.getElementById('form-recette');
-      form.addEventListener('submit', (e) => {
-        const selects = container.querySelectorAll('select[name="ing_farine[]"]');
-        let hasFlour = false;
-        selects.forEach(s => { if (s.value && s.value.trim() !== '') hasFlour = true; });
-        if (!hasFlour) {
-          e.preventDefault();
-          alert("Veuillez sélectionner au moins une farine F&P dans la liste déroulante.");
-        }
-      });
+const form = document.getElementById('form-recette');
+form.addEventListener('submit', (e) => {
+  // ⬇️ NE BLOQUE PAS si on supprime
+  const deleting = form.querySelector('input[name="supprimer"]')?.checked;
+  if (deleting) return;
+
+  const selects = container.querySelectorAll('select[name="ing_farine[]"]');
+  let hasFlour = false;
+  selects.forEach(s => { if (s.value && s.value.trim() !== '') hasFlour = true; });
+  if (!hasFlour) {
+    e.preventDefault();
+    alert("Veuillez sélectionner au moins une farine F&P dans la liste déroulante.");
+  }
+});
+
     })();
   </script>
 </body>
