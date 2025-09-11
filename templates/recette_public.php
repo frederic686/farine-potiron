@@ -168,7 +168,7 @@ $q                = htmlspecialchars($filters['q'] ?? '');
                         <button type="button"
                                 class="btn-mini toggle-edit"
                                 data-target="#edit-<?= (int)$r['id'] ?>-<?= $commentId ?>">
-                          ✏️ Mettre à jour
+                          ✏️ Mettre à jour sont commentaire 
                         </button>
                       </div>
 
