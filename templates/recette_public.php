@@ -1,16 +1,8 @@
 <?php
-// templates/recette_public.php
-// Variables attendues :
-// - $recettes : [id, titre, description, duree, difficulte, date_creation, auteur_pseudo,
-//                ingredients[], commentaires[], moyenne_note, nb_notes,
-//                can_comment, own_note, own_comment_id, own_comment_texte, own_comment_date, is_edit]
-// - $catalogueFarines : [ref => libellé]  // (facultatif ici)
-// - $filters : ['q']                      // (facultatif ici)
-// - $isConnected, $redirectToLogin, $CSRF, $info, $error
+/*
+// recette public
 
-$currentUserId    = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-$filters          = is_array($filters ?? null) ? $filters : [];
-$q                = htmlspecialchars($filters['q'] ?? '');
+*/
 ?>
 <!DOCTYPE html>
 <html lang="fr">

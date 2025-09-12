@@ -1,12 +1,4 @@
 <?php
-/**
- * Classe Model simple et générique
- * --------------------------------
- * - Sert de classe mère pour représenter une table SQL sous forme d’objet
- * - Contient des getters / setters dynamiques
- * - Permet de générer automatiquement des requêtes UPDATE en utilisant PDO
- * - Utilise la connexion définie dans init.php ($bdd)
- */
 
 // Inclusion du fichier de connexion
 require_once "library/init.php";
@@ -16,7 +8,7 @@ class Model {
     // Tableau associatif qui contiendra toutes les données de l’objet
     protected $data = [];
 
-    // Nom de la table SQL correspondante (à définir dans la classe enfant)
+
     protected $table;
 
     /**

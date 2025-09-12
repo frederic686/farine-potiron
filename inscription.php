@@ -54,8 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = "⚠️ Mot de vérification incorrect.";
     } else {
         try {
-            // ⚠️ Si ton modèle User ne hash pas, dé-commente la ligne suivante :
-            // $password = password_hash($password, PASSWORD_DEFAULT);
+    
 
             $user = new User();
             $user->pseudo   = $pseudo;

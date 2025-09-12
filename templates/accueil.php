@@ -2,7 +2,6 @@
 /**
  * Vue: accueil
  * Rôle: Afficher la page d’accueil avec accès rapide aux actions principales.
- * Données attendues (optionnel): $recettes (array) — fourni par IndexController::accueil()
  * Sortie: HTML
  */
 ?>
